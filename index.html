@@ -2,8 +2,17 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <!-- viewport-fit=cover 确保内容延伸到 iPhone 的刘海和底部区域 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="referrer" content="no-referrer">
+    
+    <!-- 👇 PWA 相关配置 -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="液态通讯">
+    <meta name="theme-color" content="#000000">
+    
     <title>液态玻璃通讯 (最终完美版)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -420,5 +429,16 @@
         </div>
 
     </div>
+
+    <!-- 👇 注册 Service Worker 实现离线缓存 -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW registered!', reg))
+                    .catch(err => console.log('SW registration failed!', err));
+            });
+        }
+    </script>
 </body>
 </html>
