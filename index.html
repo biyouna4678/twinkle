@@ -2,11 +2,10 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <!-- viewport-fit=cover 确保内容延伸到 iPhone 的刘海和底部区域 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="referrer" content="no-referrer">
     
-    <!-- 👇 PWA 相关配置 -->
+    <!-- PWA 相关配置 -->
     <link rel="manifest" href="./manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -14,6 +13,20 @@
     <meta name="theme-color" content="#000000">
     
     <title>液态玻璃通讯 (最终完美版)</title>
+
+    <!-- 👇 错误捕获脚本，排查白屏问题 -->
+    <script>
+      window.addEventListener('error', function(e) {
+        if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+          alert('❌ 资源加载失败:\n' + (e.target.src || e.target.href));
+        } else {
+          alert('❌ 运行错误:\n' + e.message);
+        }
+      }, true);
+      window.addEventListener('unhandledrejection', function(e) {
+        alert('❌ 异步异常:\n' + e.reason);
+      });
+    </script>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -185,11 +198,11 @@
                 </template>
             </div>
 
-            <!-- 👇 替换成 Web Component 标签 -->
+            <!-- 底部工具栏 -->
             <chat-toolbar></chat-toolbar>
         </div>
 
-        <!-- ================= 抽离出来的组件 ================= -->
+        <!-- 抽离出来的组件 -->
         <image-preview></image-preview>
         <call-ui></call-ui>
 
@@ -430,7 +443,7 @@
 
     </div>
 
-    <!-- 👇 注册 Service Worker 实现离线缓存 -->
+    <!-- 注册 Service Worker -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
