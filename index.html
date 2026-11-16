@@ -49,8 +49,8 @@
         <div class="w-full h-full flex flex-col transition-opacity transform duration-300"
              :class="callState !== 'idle' && !isMinimized ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'">
             
-            <!-- 顶部固定 -->
-            <div class="flex items-center justify-between w-full gap-2 shrink-0 mb-4 px-3 relative z-40 pt-4">
+            <!-- 👇 顶部固定：使用了 safe-top 类避免被刘海屏遮挡 -->
+            <div class="flex items-center justify-between w-full gap-2 shrink-0 mb-4 px-3 relative z-40 safe-top">
                 <div class="wet-glass rounded-full h-[56px] px-3 flex items-center w-fit max-w-[75%] transition-all duration-300">
                     <button class="p-1 ml-0 text-black hover:text-black transition-colors rounded-full hover:bg-white/20 shrink-0" @click="alert('执行返回操作')">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
@@ -183,25 +183,241 @@
         <image-preview></image-preview>
         <call-ui></call-ui>
 
-        <!-- 弹窗群 -->
-        <div x-show="showLocationModal" class="fixed inset-0 z-[250] flex flex-col justify-end bg-black/40" style="display: none;" @click.self="showLocationModal = false">
+        <!-- ================= 发送位置弹窗 ================= -->
+        <div x-show="showLocationModal" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-full" x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-full" class="fixed inset-0 z-[250] flex flex-col justify-end bg-black/40" style="display: none;" @click.self="showLocationModal = false">
             <div class="action-sheet">
-                <div class="preview-map"><div class="silver-marker-container"><div class="pin-shadow"></div><div class="hologram-beam"></div><div class="hologram-ring"></div></div></div>
+                <div class="preview-map">
+                    <div class="silver-marker-container">
+                        <div class="hud-tag">
+                            <div class="title" x-text="newLocation.name || '未命名地点'"></div>
+                            <div class="subtitle" x-text="newLocation.subtitle"></div>
+                        </div>
+                        <div class="pin-shadow"></div><div class="hologram-beam"></div><div class="hologram-ring"></div>
+                        <svg class="pin-svg" viewBox="0 0 48 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <defs><linearGradient id="silverGradientModal" x1="10" y1="4" x2="38" y2="44" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FFFFFF"/><stop offset="40%" stop-color="#F0F0F0"/><stop offset="100%" stop-color="#A0A0A0"/></linearGradient></defs>
+                            <path d="M24 4C14.06 4 6 12.06 6 22c0 12 18 30 18 30s18-18 18-30c0-9.94-8.06-18-18-18zm0 26c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z" fill="url(#silverGradientModal)"/>
+                            <circle cx="24" cy="22" r="5" fill="#FFFFFF" opacity="0.9"/><circle cx="24" cy="22" r="3" fill="#D0D0D0"/>
+                        </svg>
+                    </div>
+                </div>
                 <div class="sheet-content">
                     <div class="sheet-title">发送位置</div>
                     <div class="input-group"><input type="text" class="input-field" x-model="newLocation.name" placeholder="地名（必填）"></div>
-                    <div class="action-buttons"><button class="btn btn-cancel" @click="showLocationModal = false">取消</button><button class="btn btn-send" @click="sendLocation()">发送</button></div>
+                    <div class="input-group"><input type="text" class="input-field" x-model="newLocation.subtitle" placeholder="地名外文名"></div>
+                    <div class="input-group"><input type="text" class="input-field" x-model="newLocation.address" placeholder="城市·具体地址"></div>
+                    <div class="action-buttons">
+                        <button class="btn btn-cancel" @click="showLocationModal = false">取消</button>
+                        <button class="btn btn-send" @click="sendLocation()">发送</button>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- 支付弹窗（简化，完整版你本地有） -->
-        <div x-show="isTransferModalOpen" x-cloak class="fixed inset-0 z-[600] flex items-center justify-center px-4 bg-black/40 backdrop-blur-sm" @click.self="isTransferModalOpen = false">
-             <div class="w-[310px] transfer-modal rounded-[24px] p-6 relative bg-white">
-                 <div class="text-center mb-4">转账弹窗</div>
-                 <button @click="isTransferModalOpen = false" class="w-full py-2 bg-gray-200 rounded">关闭</button>
-             </div>
+        <!-- ================= 全息详情页 ================= -->
+        <div x-show="showLocationDetail" x-transition.opacity class="fixed inset-0 z-[300] bg-[#2b2b2b] overflow-hidden" style="display: none;">
+            <div class="hologram-exit-btn" @click="showLocationDetail = false"><div class="exit-icon"></div></div>
+            <div class="grid-bg">
+                <div class="silver-marker-container">
+                    <div class="hud-tag">
+                        <div class="title" x-text="selectedLocation?.name || '未知地点'"></div>
+                        <div class="subtitle" x-text="selectedLocation?.subtitle"></div>
+                    </div>
+                    <div class="pin-shadow"></div><div class="hologram-beam"></div><div class="hologram-ring"></div>
+                    <svg class="pin-svg" viewBox="0 0 48 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <defs><linearGradient id="silverGradientDetail" x1="10" y1="4" x2="38" y2="44" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FFFFFF"/><stop offset="40%" stop-color="#F0F0F0"/><stop offset="100%" stop-color="#A0A0A0"/></linearGradient></defs>
+                        <path d="M24 4C14.06 4 6 12.06 6 22c0 12 18 30 18 30s18-18 18-30c0-9.94-8.06-18-18-18zm0 26c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z" fill="url(#silverGradientDetail)"/>
+                        <circle cx="24" cy="22" r="5" fill="#FFFFFF" opacity="0.9"/><circle cx="24" cy="22" r="3" fill="#D0D0D0"/>
+                    </svg>
+                    <div class="stars"><div class="star"></div><div class="star"></div><div class="star"></div><div class="star"></div></div>
+                </div>
+            </div>
         </div>
+
+        <!-- ======================== 转账弹窗群 ======================== -->
+        <!-- 1. 转账表单弹窗 -->
+        <div x-show="isTransferModalOpen" x-cloak
+             class="fixed inset-0 z-[600] flex items-center justify-center px-4 bg-black/40 backdrop-blur-sm transition-opacity"
+             @click.self="isTransferModalOpen = false">
+            <div class="w-[310px] transfer-modal rounded-[24px] p-6 relative"
+                 x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-90" x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-90">
+                <div class="text-center text-[17px] font-bold text-[#1a1d20] mb-6 tracking-wide">
+                    转账给 <span class="font-extrabold text-black ml-1">Yosali</span>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-[13px] text-gray-500 font-medium mb-2 pl-0.5">转账金额</label>
+                    <div class="input-wrapper rounded-[12px] h-[56px] px-4 flex items-center transition-shadow">
+                        <span class="text-[22px] font-semibold text-[#1a1d20] mr-2 font-mono">¥</span>
+                        <input type="text" inputmode="decimal" x-model="amount" @input="limitAmount"
+                               class="bg-transparent border-none outline-none text-[24px] font-bold text-[#1a1d20] w-full placeholder-gray-400 font-sans"
+                               placeholder="0.00" autocomplete="off">
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-[13px] text-gray-500 font-medium mb-2 pl-0.5">转账留言</label>
+                    <div class="input-wrapper rounded-[12px] h-[56px] px-4 flex items-center transition-shadow">
+                        <input type="text" x-model="message"
+                               class="bg-transparent border-none outline-none text-[14px] font-medium text-[#1a1d20] w-full placeholder-gray-400"
+                               placeholder="写句心里话..." autocomplete="off">
+                    </div>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-[13px] text-gray-500 font-medium mb-2 pl-0.5">支付方式</label>
+                    <div class="input-wrapper rounded-[12px] h-[56px] px-4 flex items-center justify-between cursor-pointer active:bg-[#dde1e6]" 
+                         @click="togglePayMethod">
+                        <div class="flex items-center gap-2.5 w-full">
+                            <svg x-show="payMethod === 'balance'" class="w-5 h-5 fill-[#3f454d] flex-shrink-0" viewBox="0 0 24 24"><path d="M19 7V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-2h-4a3 3 0 0 1 0-6h4zm-4 8h4v-4h-4c-1.1 0-2 .9-2 2s.9 2 2 2zm2 4H5V5h12v2h-5c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h7v2z"/></svg>
+                            <svg x-show="payMethod === 'bankCard'" class="w-5 h-5 fill-[#3f454d] flex-shrink-0" viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+                            <span class="text-[15px] font-semibold text-[#1a1d20]" x-text="payMethod === 'balance' ? '零钱' : '银行卡支付'"></span>
+                            <span class="text-[12px] text-gray-400 ml-auto mr-2 font-medium" x-show="payMethod === 'balance'">¥ 8,888.00</span>
+                        </div>
+                        <svg class="w-4 h-4 stroke-gray-400 stroke-2 fill-none flex-shrink-0" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <button @click="isTransferModalOpen = false" class="flex-1 py-3.5 rounded-[12px] bg-[#e6e9ee] text-[#4b5563] font-semibold text-[15px] active:bg-[#d1d5db] transition-colors">取消</button>
+                    <button @click="handleConfirmTransfer" class="flex-1 py-3.5 rounded-[12px] bg-[#3f454d] text-white font-semibold text-[15px] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_4px_10px_rgba(63,69,77,0.2)] active:scale-[0.98] transition-transform">确定转账</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. 银行卡选择半屏弹窗 -->
+        <div x-show="isBankCardModalOpen" x-cloak
+             class="fixed inset-0 z-[610] flex items-end justify-center"
+             @click.self="isBankCardModalOpen = false">
+            <div class="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300"
+                 :class="isBankCardModalOpen ? 'opacity-100' : 'opacity-0'"></div>
+            <div class="relative w-full max-w-md bg-[#F2F2F7] rounded-t-[32px] p-6 pb-10 transition-transform duration-300 transform flex flex-col max-h-[85vh]"
+                 :class="isBankCardModalOpen ? 'translate-y-0' : 'translate-y-full'">
+                <button @click="isBankCardModalOpen = false" 
+                        class="absolute top-6 left-6 w-8 h-8 rounded-full bg-gray-200/80 flex items-center justify-center active:bg-gray-300 transition-colors z-10">
+                    <svg class="w-4 h-4 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+                <h2 class="text-center text-[22px] font-bold text-black mt-2 mb-1">选择支付方式</h2>
+                <div class="text-center text-[15px] text-gray-500 mb-6">
+                    付款金额：<span class="font-medium text-black font-mono">¥ <span x-text="amount || '0.00'"></span></span>
+                </div>
+
+                <div class="flex-1 overflow-x-auto no-scrollbar flex gap-4 pb-6 px-1 snap-x snap-mandatory" x-ref="bankCarousel" @scroll.debounce.50ms="handleCarouselScroll($event)" style="padding-left: calc(50% - 85px); padding-right: calc(50% - 85px);">
+                    <div class="snap-center flex-shrink-0 w-[170px] h-[107px]" @click="selectBankCard(0, $event)">
+                        <div class="bank-card-wrapper" :class="selectedBankCardIndex === 0 ? 'active' : ''">
+                            <div class="bank-card-scale"><div class="card-1">
+                                <svg class="card-pattern-svg" viewBox="0 0 300 320" fill="none" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(-12, 150, 160)"><path d="M60 280 C 40 200, 100 80, 220 50 C 270 120, 250 240, 150 290 Z" fill="url(#petalGrad1)" opacity="0.12"/><path d="M90 270 C 70 180, 130 90, 240 70 C 280 140, 260 230, 170 280 Z" fill="url(#petalGrad2)" opacity="0.18"/><path d="M120 250 C 100 170, 150 100, 250 90 C 270 150, 240 220, 180 260 Z" fill="url(#petalGrad1)" opacity="0.22"/></g><defs><linearGradient id="petalGrad1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#ffffff" stop-opacity="0.9"/><stop offset="50%" stop-color="#ffffff" stop-opacity="0.3"/><stop offset="100%" stop-color="#ffffff" stop-opacity="0"/></linearGradient><linearGradient id="petalGrad2" x1="20%" y1="0%" x2="80%" y2="100%"><stop offset="0%" stop-color="#ffffff" stop-opacity="0.7"/><stop offset="100%" stop-color="#ffffff" stop-opacity="0.05"/></linearGradient></defs></svg>
+                                <div class="card-top"><div class="brand-logo"><div class="logo-capsule"></div><div class="logo-capsule"></div><div class="logo-capsule"></div><div class="logo-capsule"></div></div><div class="logo-divider"></div><div class="card-type">Platinum</div></div>
+                                <div class="card-middle"><div class="chip-row"><svg class="nfc-icon" viewBox="0 0 24 24"><path d="M6 18a10 10 0 0 1 0-12"></path><path d="M10 15a6 6 0 0 1 0-6"></path><path d="M14 12a2 2 0 0 1 0 0"></path></svg><div class="chip"><div class="chip-line h1"></div><div class="chip-line h2"></div><div class="chip-line v1"></div><div class="chip-line v2"></div></div></div><div class="card-number">1288 7068 2260 2640</div></div>
+                                <div class="card-bottom"><div class="info-group"><div class="info-item"><span class="info-label">持卡人姓名</span><span class="info-value">Aden Erickson</span></div><div class="info-item"><span class="info-label">有效期</span><span class="info-value">xx/xx</span></div></div><div class="visa-logo">VISA</div></div>
+                            </div></div>
+                        </div>
+                    </div>
+
+                    <div class="snap-center flex-shrink-0 w-[170px] h-[107px]" @click="selectBankCard(1, $event)">
+                        <div class="bank-card-wrapper" :class="selectedBankCardIndex === 1 ? 'active' : ''">
+                            <div class="bank-card-scale"><div class="card-3">
+                                <div class="chip"><div class="chip-line h1"></div><div class="chip-line h2"></div><div class="chip-line v1"></div><div class="chip-line v2"></div><div class="chip-center"></div></div>
+                                <div class="title-wrapper"><div class="title">J.P. Morgan</div></div>
+                                <div class="visa-container"><div class="visa-text">VISA</div><div class="infinite-text">Infinite</div></div>
+                            </div></div>
+                        </div>
+                    </div>
+
+                    <div class="snap-center flex-shrink-0 w-[170px] h-[107px]" @click="selectBankCard(2, $event)">
+                        <div class="bank-card-wrapper" :class="selectedBankCardIndex === 2 ? 'active' : ''">
+                            <div class="bank-card-scale"><div class="card-4">
+                                <svg class="sunburst" viewBox="0 0 100 100"><circle cx="50" cy="50" r="4" fill="#111111"/><g stroke="#111111" stroke-width="3.5" stroke-linecap="round"><line x1="50" y1="50" x2="92" y2="50" /><line x1="50" y1="50" x2="88.8" y2="66.1" /><line x1="50" y1="50" x2="79.7" y2="79.7" /><line x1="50" y1="50" x2="66.1" y2="88.8" /><line x1="50" y1="50" x2="50" y2="92" /><line x1="50" y1="50" x2="33.9" y2="88.8" /><line x1="50" y1="50" x2="20.3" y2="79.7" /><line x1="50" y1="50" x2="11.2" y2="66.1" /><line x1="50" y1="50" x2="8" y2="50" /><line x1="50" y1="50" x2="11.2" y2="33.9" /><line x1="50" y1="50" x2="20.3" y2="20.3" /><line x1="50" y1="50" x2="33.9" y2="11.2" /><line x1="50" y1="50" x2="50" y2="8" /><line x1="50" y1="50" x2="66.1" y2="11.2" /><line x1="50" y1="50" x2="79.7" y2="20.3" /><line x1="50" y1="50" x2="88.8" y2="33.9" /></g></svg>
+                                <div class="title-wrapper"><div class="title">Yulia</div></div>
+                                <div class="card-label">VISA</div>
+                            </div></div>
+                        </div>
+                    </div>
+
+                    <div class="snap-center flex-shrink-0 w-[170px] h-[107px]" @click="selectBankCard(3, $event)">
+                        <div class="bank-card-wrapper" :class="selectedBankCardIndex === 3 ? 'active' : ''">
+                            <div class="bank-card-scale"><div class="card-5">
+                                <div class="card-texture"></div><div class="card-glow"></div>
+                                <div class="card-top"><div class="brand-group"><svg class="brand-logo-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M50 5 L85 20 L85 50 L50 35 Z" fill="#ffffff" opacity="0.95"/><path d="M95 50 L80 85 L50 85 L65 50 Z" fill="#e0e6ed" opacity="0.85"/><path d="M50 95 L15 80 L15 50 L50 65 Z" fill="#c5d0dc" opacity="0.75"/><path d="M5 50 L20 15 L50 15 L35 50 Z" fill="#ffffff" opacity="0.9"/></svg><div class="brand-text"><span class="brand-title">Sapphire</span><span class="brand-subtitle">Reserve</span></div></div></div>
+                                <div class="card-middle"><div class="chip"><div class="chip-line h1"></div><div class="chip-line h2"></div><div class="chip-line v1"></div><div class="chip-line v2"></div></div></div>
+                                <div class="card-bottom"><div class="info-group"><div class="info-item"><span class="info-label">持卡人姓名</span><span class="info-value">Liam Vance</span></div><div class="info-item"><span class="info-label">有效期</span><span class="info-value">12/28</span></div></div><div class="visa-logo">VISA</div></div>
+                            </div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button @click="confirmBankCardRecharge()" 
+                            class="w-full h-[52px] bg-black text-white font-bold rounded-full transition-all active:scale-[0.98] text-[16px] shadow-md flex items-center justify-center gap-2">
+                        确认支付 <span class="font-mono">¥ <span x-text="amount || '0.00'"></span></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 请输入支付密码弹窗 -->
+        <div x-show="isPasswordModalOpen" x-cloak
+             class="fixed inset-0 z-[620] flex flex-col justify-end bg-black/60 backdrop-blur-sm"
+             x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+            <div class="flex-1 flex flex-col items-center justify-center pb-12 relative">
+                <button @click="isPasswordModalOpen = false" class="absolute top-6 left-6 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white active:bg-white/20 transition-colors">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+                <div class="text-white/80 text-[15px] mb-3">请输入支付密码</div>
+                <div class="text-white text-[38px] font-bold font-mono tracking-tight leading-none mb-1">
+                    <span class="text-[24px] mr-1">¥</span><span x-text="amount || '0.00'"></span>
+                </div>
+                <div class="text-white/50 text-[12px] mb-4" x-text="successPayMethodInfo"></div>
+                <div class="text-red-400 text-[13px] font-medium transition-opacity duration-200" :class="passwordError ? 'opacity-100' : 'opacity-0'">密码错误，请重试</div>
+            </div>
+
+            <div class="bg-[#F7F7FA] rounded-t-[28px] pt-5 pb-6 px-4 w-full shadow-[0_-10px_40px_rgba(0,0,0,0.15)] flex flex-col items-center safe-bottom">
+                <div class="flex justify-center mb-5 w-full px-6">
+                    <div class="flex w-full bg-white rounded-[14px] shadow-[0_4px_16px_rgba(0,0,0,0.04)] overflow-hidden" :class="{'animate-shake': isShaking}">
+                        <template x-for="i in 6">
+                            <div class="flex-1 h-[50px] flex items-center justify-center border-r border-gray-100/60 last:border-r-0">
+                                <div x-show="password.length >= i" class="w-3 h-3 bg-[#1a1d20] rounded-full transition-transform duration-100"></div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="w-full bg-white rounded-[16px] shadow-[0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden grid grid-cols-3 border border-gray-100/30">
+                    <template x-for="num in [1,2,3,4,5,6,7,8,9]">
+                        <button class="h-[52px] bg-white text-[22px] font-medium text-[#1a1d20] border-b border-r border-gray-100/60 flex items-center justify-center active:bg-gray-100 transition-colors duration-75" @click="inputPassword(num)" x-text="num"></button>
+                    </template>
+                    <button class="h-[52px] bg-white text-[15px] font-medium text-[#1a1d20] border-b border-r border-gray-100/60 flex items-center justify-center active:bg-gray-100 transition-colors duration-75" @click="clearPassword">清零</button>
+                    <button class="h-[52px] bg-white text-[22px] font-medium text-[#1a1d20] border-b border-r border-gray-100/60 flex items-center justify-center active:bg-gray-100 transition-colors duration-75" @click="inputPassword(0)">0</button>
+                    <button class="h-[52px] bg-white border-b border-gray-100/60 flex items-center justify-center active:bg-gray-100 transition-colors duration-75" @click="deletePassword">
+                        <svg class="w-5 h-5 text-[#1a1d20]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. 极简转账成功弹窗 -->
+        <div x-show="isSuccessModalOpen" x-cloak
+             class="fixed inset-0 z-[630] flex items-center justify-center px-4 bg-black/40 backdrop-blur-sm"
+             @click.self="isSuccessModalOpen = false; setTimeout(() => amount = '', 300);">
+            <div class="w-[300px] bg-white rounded-[28px] p-8 relative shadow-2xl flex flex-col items-center animate-pop-in">
+                <div class="w-16 h-16 rounded-full bg-[#3f454d] flex items-center justify-center mb-6 shadow-[0_4px_12px_rgba(63,69,77,0.3)]">
+                    <svg class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <h2 class="text-[20px] font-bold text-[#1a1d20] mb-2 tracking-wide">转账成功</h2>
+                <div class="text-[36px] font-extrabold text-[#1a1d20] font-mono leading-none mb-6">
+                    <span class="text-[24px] font-semibold mr-1">¥</span><span x-text="amount || '0.00'"></span>
+                </div>
+                <div class="w-full bg-[#f4f5f8] rounded-[16px] p-4 flex flex-col gap-3 mb-8">
+                    <div class="flex items-start justify-between">
+                        <span class="text-[13px] text-gray-500 font-medium">留言</span>
+                        <span class="text-[13px] text-[#1a1d20] font-medium text-right max-w-[160px] leading-relaxed" x-text="message || '无'"></span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[13px] text-gray-500 font-medium">支付方式</span>
+                        <span class="text-[13px] text-[#1a1d20] font-medium" x-text="successPayMethodInfo"></span>
+                    </div>
+                </div>
+                <button @click="isSuccessModalOpen = false; setTimeout(() => amount = '', 300);" class="w-full py-3.5 rounded-[14px] bg-[#1a1d20] text-white font-bold text-[15px] shadow-lg active:scale-[0.98] transition-transform">完成</button>
+            </div>
+        </div>
+
     </div>
 
     <!-- 👇 把所有依赖放到 body 最底部，保证按顺序执行 -->
@@ -221,7 +437,7 @@
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
                 for(let registration of registrations) {
-                    registration.unregister(); // 强制注销旧的 Service Worker
+                    registration.unregistration(); // 如果你还想用SW就把这行去掉，目前为了清缓存所以注销
                 }
             });
         }
