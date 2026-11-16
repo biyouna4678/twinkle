@@ -18,6 +18,14 @@ html, body {
     touch-action: manipulation;
 }
 
+/* 👇 安全区专用类，解决刘海屏和底部小黑条遮挡 */
+.safe-top {
+    padding-top: calc(env(safe-area-inset-top) + 1rem) !important;
+}
+.safe-bottom {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 2rem) !important;
+}
+
 /* 允许输入框和文本域正常选中 */
 textarea, input { 
     -webkit-user-select: text; 
