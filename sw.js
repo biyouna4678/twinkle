@@ -1,4 +1,4 @@
-const CACHE_NAME = 'liquid-glass-v1';
+const CACHE_NAME = 'liquid-glass-v2';
 
 // 需要预缓存的本地核心文件
 const LOCAL_ASSETS = [
