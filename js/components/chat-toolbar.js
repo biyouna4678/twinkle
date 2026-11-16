@@ -2,10 +2,10 @@
 class ChatToolbar extends HTMLElement {
   connectedCallback() {
     this.innerHTML = `
-      <!-- ================= 底部输入区 (彻底修复版) ================= -->
+      <!-- ================= 底部输入区 ================= -->
       <div class="shrink-0 w-full z-50 mt-auto bg-transparent relative">
-          <!-- 输入框：固定底部间距 -->
-          <div class="px-4 pb-8">
+          <!-- 👇 输入框：使用内联样式动态计算底部安全距离 + 16px的呼吸感 -->
+          <div class="px-4" style="padding-bottom: calc(env(safe-area-inset-bottom) + 16px);">
               <div class="wet-glass rounded-[26px] h-[52px] p-1 px-2 flex items-center gap-1.5 w-full shadow-lg">
                   <button class="shrink-0 p-1 rounded-full hover:bg-white/20 transition-colors"><img src="https://i.ibb.co/tTcTvwCX/731-20261005164940.png" class="w-6 h-6 object-contain"></button>
                   <textarea rows="1" x-model="messageText" @keydown.enter.prevent="sendMessage()" placeholder="Send message..." class="flex-1 min-w-0 bg-transparent py-2 px-1 text-[15px] leading-snug text-gray-900 outline-none placeholder:text-gray-500 resize-none max-h-[38px] overflow-y-auto"></textarea>
@@ -37,7 +37,8 @@ class ChatToolbar extends HTMLElement {
           <!-- 工具栏：严格 grid 动画，内层加 overflow-hidden -->
           <div class="grid-transition w-full" :class="showToolsPanel ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'">
               <div class="min-h-0 overflow-hidden">
-                  <div class="bg-[#f3f4f6] w-full rounded-t-[28px] shadow-[0_-10px_30px_rgba(0,0,0,0.05)] border-t border-white/60 flex flex-col h-[330px]" @touchstart="handleTouchStart($event)" @touchend="handleTouchEnd($event)">
+                  <!-- 👇 给弹出的工具栏也加上底部安全区，防止小黑条遮挡里面的按钮 -->
+                  <div class="bg-[#f3f4f6] w-full rounded-t-[28px] shadow-[0_-10px_30px_rgba(0,0,0,0.05)] border-t border-white/60 flex flex-col h-[330px]" style="padding-bottom: env(safe-area-inset-bottom);" @touchstart="handleTouchStart($event)" @touchend="handleTouchEnd($event)">
                       <div class="w-10 h-1.5 bg-gray-300 rounded-full mx-auto mt-4 mb-2 shrink-0"></div>
                       <div class="flex-1 relative px-4 pt-2">
                           <div x-show="currentPage === 0" x-transition.opacity class="grid grid-cols-4 gap-y-4 gap-x-2 w-full">
